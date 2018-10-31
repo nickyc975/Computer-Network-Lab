@@ -1,0 +1,3 @@
+rootProject.name = 'HITCNLAB'
+include 'Lab-1'
+
