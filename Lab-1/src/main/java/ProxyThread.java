@@ -7,6 +7,7 @@ import java.net.SocketTimeoutException;
 public class ProxyThread implements Runnable{
     private final int BUFFER_SIZE = 4096;
     private final int SOCKET_TIMEOUT = 200;
+    private final int MAX_TIMEOUT_COUNT = 15;
     private final String CONNECT = "CONNECT";
     private final byte[] CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection established\r\n\r\n".getBytes();
 
@@ -15,8 +16,9 @@ public class ProxyThread implements Runnable{
 
     public ProxyThread init(Socket client) {
         this.client = client;
-        if (this.buffer == null)
+        if (this.buffer == null) {
             this.buffer = new byte[BUFFER_SIZE];
+        }
         return this;
     }
 
@@ -48,27 +50,33 @@ public class ProxyThread implements Runnable{
                 ProxyToServer.write(buffer, 0, length);
             }
 
-            while (!client.isClosed() && !server.isClosed()) {
+            int timeOutCount = 0;
+            while (!client.isClosed() && !server.isClosed() && timeOutCount < MAX_TIMEOUT_COUNT) {
                 try {
                     length = ClientToProxy.read(buffer);
+                    timeOutCount = 0;
                     while (length != -1) {
                         ProxyToServer.write(buffer, 0, length);
                         length = ClientToProxy.read(buffer);
                     }
                 } catch (SocketTimeoutException e) {
-
+                    timeOutCount++;
                 }
 
                 try {
                     length = ServerToProxy.read(buffer);
+                    timeOutCount = 0;
                     while (length != -1) {
                         ProxyToClient.write(buffer, 0, length);
                         length = ServerToProxy.read(buffer);
                     }
                 } catch (SocketTimeoutException e) {
-
+                    timeOutCount++;
                 }
             }
+
+            client.close();
+            server.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
