@@ -3,6 +3,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class HttpRequestHeader {
+    private final int HTTP_PORT = 80;
+    private final int HTTPS_PORT = 443;
+
     private String method;
     private String URL;
     private String version;
@@ -14,12 +17,12 @@ public class HttpRequestHeader {
         String headerString = new String(request, 0, headerEnd, StandardCharsets.UTF_8);
         String[] headerArray = headerString.split("\r\n");
 
-        String[] requestLine = headerArray[0].split("\\s");
+        String[] requestLine = headerArray[0].split("\\s", 3);
         method = requestLine[0];
         URL = requestLine[1];
         version = requestLine[2];
         for (int i = 1; i < headerArray.length; i++) {
-            String[] headerLine = headerArray[i].split("\\s*:\\s*");
+            String[] headerLine = headerArray[i].split("\\s*:\\s*", 2);
             headers.put(headerLine[0], headerLine[1]);
         }
     }
@@ -38,6 +41,23 @@ public class HttpRequestHeader {
 
     public Map<String, String> getHeaders() {
         return headers;
+    }
+
+    public String getHost() {
+        return headers.get("Host").split(":")[0];
+    }
+
+    public int getPort() {
+        String[] spliced = headers.get("Host").split(":");
+        if (spliced.length == 2) {
+            return Integer.parseInt(spliced[1]);
+        } else {
+            if (method.equals("CONNECT")) {
+                return HTTPS_PORT;
+            } else {
+                return HTTP_PORT;
+            }
+        }
     }
 
     public String toString() {
