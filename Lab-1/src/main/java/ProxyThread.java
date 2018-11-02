@@ -26,6 +26,7 @@ public class ProxyThread implements Runnable{
     public void run() {
         int length;
         Socket server;
+        HttpRequestHeader request = null;
         InputStream ClientToProxy, ServerToProxy;
         OutputStream ProxyToClient, ProxyToServer;
 
@@ -34,7 +35,7 @@ public class ProxyThread implements Runnable{
             ProxyToClient = client.getOutputStream();
 
             length = ClientToProxy.read(buffer);
-            HttpRequestHeader request = new HttpRequestHeader(buffer, length);
+            request = new HttpRequestHeader(buffer, length);
             System.out.print(request);
 
             server = new Socket(request.getHost(), request.getPort());
@@ -54,8 +55,8 @@ public class ProxyThread implements Runnable{
             while (!client.isClosed() && !server.isClosed() && timeOutCount < MAX_TIMEOUT_COUNT) {
                 try {
                     length = ClientToProxy.read(buffer);
-                    timeOutCount = 0;
-                    while (length != -1) {
+                    while (length > 0) {
+                        timeOutCount = 0;
                         ProxyToServer.write(buffer, 0, length);
                         length = ClientToProxy.read(buffer);
                     }
@@ -65,8 +66,8 @@ public class ProxyThread implements Runnable{
 
                 try {
                     length = ServerToProxy.read(buffer);
-                    timeOutCount = 0;
-                    while (length != -1) {
+                    while (length > 0) {
+                        timeOutCount = 0;
                         ProxyToClient.write(buffer, 0, length);
                         length = ServerToProxy.read(buffer);
                     }
@@ -78,7 +79,14 @@ public class ProxyThread implements Runnable{
             client.close();
             server.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error message: " + e.getMessage());
+            System.err.println("Request detail: ");
+            if (request != null) {
+                System.err.print(request);
+            } else {
+                System.err.println("Parse request failed.");
+                System.err.println();
+            }
         }
     }
 }
