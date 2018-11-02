@@ -31,11 +31,22 @@ public class ProxyThread implements Runnable{
         OutputStream ProxyToClient, ProxyToServer;
 
         try {
+            String clientHost = client.getInetAddress().getHostAddress();
+            if (!FireWall.validateUser(clientHost)) {
+                client.close();
+                System.out.println("Blocked user: " + clientHost + "\n");
+                return;
+            }
             ClientToProxy = client.getInputStream();
             ProxyToClient = client.getOutputStream();
 
             length = ClientToProxy.read(buffer);
             request = new HttpRequestHeader(buffer, length);
+            if (!FireWall.validateHost(request.getHost())) {
+                client.close();
+                System.out.println("Blocked host: " + request.getHost() + "\n");
+                return;
+            }
             System.out.print(request);
 
             server = new Socket(request.getHost(), request.getPort());
