@@ -7,7 +7,7 @@ import java.net.SocketTimeoutException;
 public class ProxyThread implements Runnable{
     private final int BUFFER_SIZE = 4096;
     private final int SOCKET_TIMEOUT = 200;
-    private final int MAX_TIMEOUT_COUNT = 15;
+    private final int MAX_TIMEOUT_COUNT = 17;
     private final String CONNECT = "CONNECT";
     private final byte[] CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection established\r\n\r\n".getBytes();
 
@@ -55,10 +55,14 @@ public class ProxyThread implements Runnable{
             while (!client.isClosed() && !server.isClosed() && timeOutCount < MAX_TIMEOUT_COUNT) {
                 try {
                     length = ClientToProxy.read(buffer);
-                    while (length > 0) {
+                    if (length > 0) {
                         timeOutCount = 0;
-                        ProxyToServer.write(buffer, 0, length);
-                        length = ClientToProxy.read(buffer);
+                        do {
+                            ProxyToServer.write(buffer, 0, length);
+                            length = ClientToProxy.read(buffer);
+                        } while (length > 0);
+                    } else {
+                        timeOutCount++;
                     }
                 } catch (SocketTimeoutException e) {
                     timeOutCount++;
@@ -66,10 +70,14 @@ public class ProxyThread implements Runnable{
 
                 try {
                     length = ServerToProxy.read(buffer);
-                    while (length > 0) {
+                    if (length > 0) {
                         timeOutCount = 0;
-                        ProxyToClient.write(buffer, 0, length);
-                        length = ServerToProxy.read(buffer);
+                        do {
+                            ProxyToClient.write(buffer, 0, length);
+                            length = ServerToProxy.read(buffer);
+                        } while (length > 0);
+                    } else {
+                        timeOutCount++;
                     }
                 } catch (SocketTimeoutException e) {
                     timeOutCount++;
@@ -79,13 +87,12 @@ public class ProxyThread implements Runnable{
             client.close();
             server.close();
         } catch (IOException e) {
-            System.err.println("Error message: " + e.getMessage());
-            System.err.println("Request detail: ");
+            System.err.println(e.getMessage());
+            System.err.print("Request detail:\r\n\t");
             if (request != null) {
-                System.err.print(request);
+                System.err.print(request.toString().replaceAll("\n", "\n\t"));
             } else {
-                System.err.println("Parse request failed.");
-                System.err.println();
+                System.err.println("Parse request failed.\r\n");
             }
         }
     }
