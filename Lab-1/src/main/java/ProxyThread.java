@@ -14,6 +14,12 @@ public class ProxyThread implements Runnable{
     private Socket client;
     private byte[] buffer;
 
+    /**
+     * Initialize thread.
+     *
+     * @param client socket connected with client.
+     * @return this thread.
+     */
     public ProxyThread init(Socket client) {
         this.client = client;
         if (this.buffer == null) {
@@ -31,17 +37,29 @@ public class ProxyThread implements Runnable{
         OutputStream ProxyToClient, ProxyToServer;
 
         try {
+            /*
+             * Validate user host with fire wall.
+             */
             String clientHost = client.getInetAddress().getHostAddress();
             if (!FireWall.validateUser(clientHost)) {
                 client.close();
                 System.out.println("Blocked user: " + clientHost + "\n");
                 return;
             }
+
             ClientToProxy = client.getInputStream();
             ProxyToClient = client.getOutputStream();
 
+            /*
+             * Parse http request header.
+             * Assume that the length of header is less that 4096 byte.
+             */
             length = ClientToProxy.read(buffer);
             request = new HttpRequestHeader(buffer, length);
+
+            /*
+             * Validate requesting server host with fire wall.
+             */
             if (!FireWall.validateHost(request.getHost())) {
                 client.close();
                 System.out.println("Blocked host: " + request.getHost() + "\n");
@@ -53,45 +71,61 @@ public class ProxyThread implements Runnable{
             ServerToProxy = server.getInputStream();
             ProxyToServer = server.getOutputStream();
 
+            /*
+             * Set socket reading timeout or the thread will be blocked for a long time.
+             */
             client.setSoTimeout(SOCKET_TIMEOUT);
             server.setSoTimeout(SOCKET_TIMEOUT);
 
+            /*
+             * Handle http request and https request differently.
+             *
+             * For http request, forward all read bytes to server.
+             * For https request, response "Connection established" to client.
+             */
             if (request.getMethod().equals(CONNECT)) {
                 ProxyToClient.write(CONNECTION_ESTABLISHED);
             } else {
                 ProxyToServer.write(buffer, 0, length);
             }
 
-            int timeOutCount = 0;
-            while (!client.isClosed() && !server.isClosed() && timeOutCount < MAX_TIMEOUT_COUNT) {
+            /*
+             * Start to transform data between client and server.
+             *
+             * "timeoutCount" is used to end thread automatically.
+             * If socket reading keeps timeout or reading 0 byte data for some times,
+             * we can assert that the transmission is finished and then close the connection.
+             */
+            int timeoutCount = 0;
+            while (!client.isClosed() && !server.isClosed() && timeoutCount < MAX_TIMEOUT_COUNT) {
                 try {
                     length = ClientToProxy.read(buffer);
                     if (length > 0) {
-                        timeOutCount = 0;
+                        timeoutCount = 0;
                         do {
                             ProxyToServer.write(buffer, 0, length);
                             length = ClientToProxy.read(buffer);
                         } while (length > 0);
                     } else {
-                        timeOutCount++;
+                        timeoutCount++;
                     }
                 } catch (SocketTimeoutException e) {
-                    timeOutCount++;
+                    timeoutCount++;
                 }
 
                 try {
                     length = ServerToProxy.read(buffer);
                     if (length > 0) {
-                        timeOutCount = 0;
+                        timeoutCount = 0;
                         do {
                             ProxyToClient.write(buffer, 0, length);
                             length = ServerToProxy.read(buffer);
                         } while (length > 0);
                     } else {
-                        timeOutCount++;
+                        timeoutCount++;
                     }
                 } catch (SocketTimeoutException e) {
-                    timeOutCount++;
+                    timeoutCount++;
                 }
             }
 
