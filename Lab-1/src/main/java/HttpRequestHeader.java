@@ -3,14 +3,22 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class HttpRequestHeader {
-    private final int HTTP_PORT = 80;
-    private final int HTTPS_PORT = 443;
+    private static final int HTTP_PORT = 80;
+    private static final int HTTPS_PORT = 443;
 
     private String method;
     private String URL;
     private String version;
     private Map<String, String> headers = new HashMap<>();
 
+    /**
+     * Parse request header from byte array.
+     *
+     * Use KMP pattern matching algorithm to find "\r\n\r\n" pattern in the byte array.
+     *
+     * @param request byte array from socket input stream.
+     * @param length length of valid bytes.
+     */
     public HttpRequestHeader(final byte[] request, final int length) {
         byte[] pattern = "\r\n\r\n".getBytes();
         int headerEnd = PatternFinder.find(pattern, request, pattern.length, length);
@@ -43,10 +51,23 @@ public class HttpRequestHeader {
         return headers;
     }
 
+    /**
+     * Get the target host of the request.
+     *
+     * @return target host of the request.
+     */
     public String getHost() {
         return headers.get("Host").split(":")[0];
     }
 
+    /**
+     * Get the target port of the request.
+     *
+     * If the "Host" field of the header contains port, return it directly.
+     * If not, return the default port of http or https (depended on the request method).
+     *
+     * @return target port of the request.
+     */
     public int getPort() {
         String[] spliced = headers.get("Host").split(":");
         if (spliced.length == 2) {

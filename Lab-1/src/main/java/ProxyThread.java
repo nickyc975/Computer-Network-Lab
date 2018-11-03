@@ -28,6 +28,11 @@ public class ProxyThread implements Runnable{
         return this;
     }
 
+    /**
+     * Forward data between server and client.
+     *
+     * Support both http and https connections.
+     */
     @Override
     public void run() {
         int length;
@@ -135,7 +140,11 @@ public class ProxyThread implements Runnable{
             System.err.println(e.getMessage());
             System.err.print("Request detail:\r\n\t");
             if (request != null) {
-                System.err.print(request.toString().replaceAll("\n", "\n\t"));
+                System.err.print(
+                        request.toString()
+                        .replaceAll("\r\n", "\r\n\t")
+                        .replaceAll("\r\n\t$", "\r\n")
+                );
             } else {
                 System.err.println("Parse request failed.\r\n");
             }

@@ -1,3 +1,7 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -24,17 +28,69 @@ public class FireWall {
         USER_BLACK_LIST.add(Pattern.compile(item));
     }
 
-    public static boolean validateUser(String client) {
+    /**
+     * Parse given file to build fire wall.
+     *
+     * @param filePath file that contains fire wall rules.
+     * @throws IOException read file failed.
+     */
+    public static void parseFireWall(String filePath) throws IOException {
+        String line;
+        BufferedReader reader = new BufferedReader(new FileReader(new File(filePath)));
+        while ((line = reader.readLine()) != null) {
+            String[] content = line.split("\\s");
+            if (content.length != 3) {
+                continue;
+            }
+
+            switch (content[0]) {
+                case "host":
+                    switch (content[1]) {
+                        case "white":
+                            addHostWhiteListItem(content[2]);
+                            break;
+                        case "black":
+                            addHostBlackListItem(content[2]);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                case "user":
+                    switch (content[1]) {
+                        case "white":
+                            addUserWhiteListItem(content[2]);
+                            break;
+                        case "black":
+                            addUserBlackListItem(content[2]);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Validate user host of a request.
+     *
+     * @param user user host.
+     * @return true if valid, false otherwise.
+     */
+    public static boolean validateUser(String user) {
         if (USER_WHITE_LIST.size() > 0) {
             for (Pattern pattern : USER_WHITE_LIST) {
-                if (pattern.matcher(client).find()) {
+                if (pattern.matcher(user).find()) {
                     return true;
                 }
             }
             return false;
         } else if (USER_BLACK_LIST.size() > 0) {
             for (Pattern pattern : USER_BLACK_LIST) {
-                if (pattern.matcher(client).find()) {
+                if (pattern.matcher(user).find()) {
                     return false;
                 }
             }
@@ -43,6 +99,12 @@ public class FireWall {
         return true;
     }
 
+    /**
+     * Validate server host of a request.
+     *
+     * @param host server host.
+     * @return true if valid, false otherwise.
+     */
     public static boolean validateHost(String host) {
         if (HOST_WHITE_LIST.size() > 0) {
             for (Pattern pattern : HOST_WHITE_LIST) {
