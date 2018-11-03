@@ -3,13 +3,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 
-public class ProxyThread implements Runnable{
-    private final int BUFFER_SIZE = 4096;
-    private final int SOCKET_TIMEOUT = 200;
-    private final int MAX_TIMEOUT_COUNT = 17;
-    private final String CONNECT = "CONNECT";
-    private final byte[] CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection established\r\n\r\n".getBytes();
+public class ProxyThread implements Runnable {
+    private static final int BUFFER_SIZE = 4096;
+    private static final int SOCKET_TIMEOUT = 200;
+    private static final int MAX_TIMEOUT_COUNT = 17;
+    private static final String CONNECT = "CONNECT";
+    private static final byte[] CONNECTION_ESTABLISHED = "HTTP/1.1 200 Connection established\r\n\r\n".getBytes(StandardCharsets.UTF_8);
 
     private Socket client;
     private byte[] buffer;
@@ -30,7 +31,7 @@ public class ProxyThread implements Runnable{
 
     /**
      * Forward data between server and client.
-     *
+     * <p>
      * Support both http and https connections.
      */
     @Override
@@ -72,6 +73,9 @@ public class ProxyThread implements Runnable{
             }
             System.out.print(request);
 
+            /*
+             * Connect to server.
+             */
             server = new Socket(request.getHost(), request.getPort());
             ServerToProxy = server.getInputStream();
             ProxyToServer = server.getOutputStream();
@@ -142,8 +146,8 @@ public class ProxyThread implements Runnable{
             if (request != null) {
                 System.err.print(
                         request.toString()
-                        .replaceAll("\r\n", "\r\n\t")
-                        .replaceAll("\r\n\t$", "\r\n")
+                                .replaceAll("\r\n", "\r\n\t")
+                                .replaceAll("\r\n\t$", "\r\n")
                 );
             } else {
                 System.err.println("Parse request failed.\r\n");

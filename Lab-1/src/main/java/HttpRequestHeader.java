@@ -13,14 +13,14 @@ public class HttpRequestHeader {
 
     /**
      * Parse request header from byte array.
-     *
+     * <p>
      * Use KMP pattern matching algorithm to find "\r\n\r\n" pattern in the byte array.
      *
      * @param request byte array from socket input stream.
-     * @param length length of valid bytes.
+     * @param length  length of valid bytes.
      */
     public HttpRequestHeader(final byte[] request, final int length) {
-        byte[] pattern = "\r\n\r\n".getBytes();
+        byte[] pattern = "\r\n\r\n".getBytes(StandardCharsets.UTF_8);
         int headerEnd = PatternFinder.find(pattern, request, pattern.length, length);
         String headerString = new String(request, 0, headerEnd, StandardCharsets.UTF_8);
         String[] headerArray = headerString.split("\r\n");
@@ -62,7 +62,7 @@ public class HttpRequestHeader {
 
     /**
      * Get the target port of the request.
-     *
+     * <p>
      * If the "Host" field of the header contains port, return it directly.
      * If not, return the default port of http or https (depended on the request method).
      *
