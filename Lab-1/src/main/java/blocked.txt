@@ -1,1 +1,6 @@
-host black .*\.baidu\.com
+// block ads on csdn
+
+host black pos\.baidu\.com
+host black s\.union\.360\.cn
+host black beacon\.tingyun\.com
+host black mediav\.com

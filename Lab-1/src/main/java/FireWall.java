@@ -72,6 +72,7 @@ public class FireWall {
                     break;
             }
         }
+        reader.close();
     }
 
     /**
