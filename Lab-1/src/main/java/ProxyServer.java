@@ -9,12 +9,15 @@ public class ProxyServer {
     private static final int PORT = 8080;
 
     public static void main(String[] args) throws IOException {
-        ServerSocket proxy = new ServerSocket(PORT);
-
         // If launched with arguments, parse file to build fire wall.
         if (args.length > 0) {
+            System.out.println("Using fire wall rules: " + args[0]);
             FireWall.parseFireWall(args[0]);
         }
+
+        System.out.println("Starting proxy server...");
+        ServerSocket proxy = new ServerSocket(PORT);
+        System.out.println("Proxy server started, listening local port: " + PORT);
 
         while (true) {
             Socket client = proxy.accept();
