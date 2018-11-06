@@ -1,3 +1,4 @@
 rootProject.name = 'HITCNLAB'
 include 'Lab-1'
+include 'Lab-2'
 
