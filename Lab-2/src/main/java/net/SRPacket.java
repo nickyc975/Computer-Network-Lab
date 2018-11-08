@@ -1,3 +1,5 @@
+package net;
+
 import java.util.Arrays;
 
 public class SRPacket {

@@ -1,6 +1,10 @@
+package net;
+
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 
 enum Flag {
     SEND,
@@ -11,8 +15,8 @@ enum Flag {
 
 public class SRSocket {
     private static final int SO_TIMEOUT = 100;
-    private static final int SR_DATA_LENGTH = 1024;
-    private static final int UDP_DATA_LENGTH = 1468;
+    private static final int SR_DATA_LENGTH = 1468;
+    private static final int UDP_DATA_LENGTH = 1472;
 
     private int port;
     private InetAddress address;
@@ -27,6 +31,11 @@ public class SRSocket {
     private DatagramPacket sendWrapper;
     private DatagramPacket receiveWrapper;
 
+    Random random = new Random();
+    private boolean view = false;
+    private double PktLossRatio = 0.2;
+    private double ACKLossRatio = 0.2;
+
 
     public SRSocket(int port) throws SocketException {
         server = new DatagramSocket(port);
@@ -36,13 +45,19 @@ public class SRSocket {
         server.setSoTimeout(SO_TIMEOUT);
     }
 
-    public SRSocket(int localPort, InetAddress address, int port) throws SocketException {
-        server = new DatagramSocket(localPort);
+    public SRSocket(int port, double PktLossRatio, double ACKLossRatio, boolean view) throws IOException {
+        server = new DatagramSocket(port);
         senderWindow = new SRSenderWindow();
         receiverWindow = new SRReceiverWindow();
 
         server.setSoTimeout(SO_TIMEOUT);
 
+        this.view = view;
+        this.PktLossRatio = PktLossRatio;
+        this.ACKLossRatio = ACKLossRatio;
+    }
+
+    public void connect(InetAddress address, int port) {
         this.address = address;
         this.port = port;
         this.connected = true;
@@ -51,41 +66,6 @@ public class SRSocket {
         this.receiveBuffer = new byte[UDP_DATA_LENGTH];
         this.sendWrapper = new DatagramPacket(sendBuffer, UDP_DATA_LENGTH, address, port);
         this.receiveWrapper = new DatagramPacket(receiveBuffer, UDP_DATA_LENGTH);
-    }
-
-    public void connect(InetAddress address, int port) throws ConnectException {
-        int timeoutCount = 0;
-        int MAX_TIMEOUT_COUNT = 5;
-        SRPacket hello = new SRPacket(0, SRPacketType.HELLO);
-
-        try {
-            while (timeoutCount < MAX_TIMEOUT_COUNT) {
-                try {
-                    sendTo(hello, address, port);
-                    while (true) {
-                        SRPacket recved = receiveFrom(address, port);
-                        if (recved.getType().equals(SRPacketType.HELLO)) {
-                            sendTo(hello, address, port);
-
-                            this.address = address;
-                            this.port = port;
-                            this.connected = true;
-
-                            this.sendBuffer = new byte[UDP_DATA_LENGTH];
-                            this.receiveBuffer = new byte[UDP_DATA_LENGTH];
-                            this.sendWrapper = new DatagramPacket(sendBuffer, UDP_DATA_LENGTH, address, port);
-                            this.receiveWrapper = new DatagramPacket(receiveBuffer, UDP_DATA_LENGTH);
-                            return;
-                        }
-                    }
-                } catch (SocketTimeoutException e) {
-                    timeoutCount++;
-                }
-            }
-            throw new ConnectException("Connect timeout.");
-        } catch (IOException e) {
-            throw new ConnectException("Connect failed.");
-        }
     }
 
     public void write(byte[] data, int offset, int length) throws IOException {
@@ -107,6 +87,7 @@ public class SRSocket {
                         }
                         sendLength = Integer.min(SR_DATA_LENGTH, end - sendOffset);
                         SRPacket srPacket = new SRPacket(seq, data, sendOffset, sendLength);
+                        log("send packet: " + srPacket.getSeq() + "\n");
                         send(srPacket);
                         senderWindow.add(srPacket);
                         sendOffset += sendLength;
@@ -123,6 +104,7 @@ public class SRSocket {
                         while (true) {
                             SRPacket recved = receive();
                             if (recved.getType().equals(SRPacketType.ACK)) {
+                                log("receive ack: " + recved.getSeq() + "\n");
                                 senderWindow.remove(recved.getSeq());
                                 if (!senderWindow.isFull()) {
                                     flag = Flag.SEND;
@@ -135,7 +117,13 @@ public class SRSocket {
                     }
                     break;
                 case TIMEOUT:
-                    senderWindow.resendTimeout(server, sendWrapper);
+                    SRPacketWrapper[] timeout = senderWindow.getTimeoutPkts();
+                    for (SRPacketWrapper packet : timeout) {
+                        log("resend packet: " + packet.getPacket().getSeq() + "\n");
+                        send(packet.getPacket());
+                        packet.resetTime();
+                    }
+
                     if (!senderWindow.isFull()) {
                         flag = Flag.SEND;
                     } else {
@@ -151,8 +139,19 @@ public class SRSocket {
     public byte[] read() throws IOException {
         try {
             SRPacket packet = receive();
-            while (receiverWindow.accept(packet)) {
-                send(new SRPacket(packet.getSeq(), SRPacketType.ACK));
+            while (receiverWindow.shouldACK(packet)) {
+                if (shouldLossPkt()) {
+                    log("loss packet: " + packet.getSeq() + "\n");
+                } else {
+                    log("receive packet: " + packet.getSeq() + "\n");
+                    receiverWindow.add(packet);
+                    if (shouldLossACK()) {
+                        log("loss ack: " + packet.getSeq() + "\n");
+                    } else {
+                        log("send ack: " + packet.getSeq() + "\n");
+                        send(new SRPacket(packet.getSeq(), SRPacketType.ACK));
+                    }
+                }
                 packet = receive();
             }
         } catch (SocketTimeoutException e) {
@@ -165,12 +164,32 @@ public class SRSocket {
         for(int i = 0; i < recved.length; i++) {
             byte[] packetData = recved[i].getData();
             while (data.length - offset < packetData.length) {
-                data = Arrays.copyOf(data, data.length + SR_DATA_LENGTH);
+                data = Arrays.copyOf(data, packetData.length + offset);
             }
             System.arraycopy(packetData, 0, data, offset, packetData.length);
             offset += packetData.length;
         }
         return data;
+    }
+
+    private boolean shouldLossACK() {
+        int bound = (int) (ACKLossRatio * 100);
+        int value = random.nextInt() % 101;
+        value = value < 0 ? -value : value;
+        return value < bound;
+    }
+
+    private boolean shouldLossPkt() {
+        int bound = (int) (PktLossRatio * 100);
+        int value = random.nextInt() % 101;
+        value = value < 0 ? -value : value;
+        return value < bound;
+    }
+
+    private void log(String s) {
+        if (view) {
+            System.out.println(s);
+        }
     }
 
     private void send(SRPacket packet) throws IOException {

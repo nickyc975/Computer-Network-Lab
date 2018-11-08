@@ -1,3 +1,5 @@
+package net;
+
 public enum SRPacketType {
     ACK((byte) 'A'),
     END((byte) 'E'),
