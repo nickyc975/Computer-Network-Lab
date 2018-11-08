@@ -6,9 +6,9 @@ import java.net.InetAddress;
 
 public class Client {
     public static void main(String[] args) throws Exception {
-        int emptyCount = 0, MAX_EMPTY_COUNT = 200;
+        int emptyCount = 0, MAX_EMPTY_COUNT = 50;
         FileOutputStream writer = new FileOutputStream(new File("Lab-2/src/main/java/output.jpg"));
-        SRSocket socket = new SRSocket(8080, 0, 0, true);
+        SRSocket socket = new SRSocket(8080, 0.2, 0.2, true);
         socket.connect(InetAddress.getLocalHost(), 8081);
 
         byte[] data = socket.read();

@@ -7,7 +7,7 @@ import java.net.InetAddress;
 public class Server {
     public static void main(String[] args) throws Exception {
         FileInputStream reader = new FileInputStream(new File("Lab-2/src/main/java/input.jpg"));
-        SRSocket socket = new SRSocket(8081, 0, 0, true);
+        SRSocket socket = new SRSocket(8081, 0.2, 0.2, true);
         socket.connect(InetAddress.getLocalHost(), 8080);
 
         byte[] buffer = new byte[2048];

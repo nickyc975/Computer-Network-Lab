@@ -25,26 +25,19 @@ class SRReceiverWindow {
     }
 
     SRPacket[] read() {
+        int length = 0;
         int pos = EXPECTED_SEQ % WINDOW_SIZE;
-        if (window[pos] != null) {
-            int length = 0;
-            SRPacket[] recved = new SRPacket[WINDOW_SIZE];
+        SRPacket[] recved = new SRPacket[WINDOW_SIZE];
 
-            do {
-                recved[length] = window[pos];
-                window[pos] = null;
-                pos = (pos + 1) % WINDOW_SIZE;
-                length++;
-            } while (
-                    length < WINDOW_SIZE
-                            && window[pos] != null
-                            && window[pos].getSeq() == (recved[length - 1].getSeq() + 1) % MAX_SEQ
-            );
-
-            EXPECTED_SEQ = (recved[length - 1].getSeq() + 1) % MAX_SEQ;
-            return Arrays.copyOfRange(recved, 0, length);
+        while (window[pos] != null) {
+            recved[length] = window[pos];
+            EXPECTED_SEQ = (window[pos].getSeq() + 1) % MAX_SEQ;
+            window[pos] = null;
+            pos = EXPECTED_SEQ % WINDOW_SIZE;
+            length++;
         }
-        return new SRPacket[0];
+
+        return Arrays.copyOfRange(recved, 0, length);
     }
 
     private int calDistance(int high, int low) {

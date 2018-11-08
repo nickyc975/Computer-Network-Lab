@@ -3,7 +3,6 @@ package net;
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 
 enum Flag {
@@ -106,10 +105,6 @@ public class SRSocket {
                             if (recved.getType().equals(SRPacketType.ACK)) {
                                 log("receive ack: " + recved.getSeq() + "\n");
                                 senderWindow.remove(recved.getSeq());
-                                if (!senderWindow.isFull()) {
-                                    flag = Flag.SEND;
-                                    break;
-                                }
                             }
                         }
                     } catch (SocketTimeoutException e) {
@@ -124,13 +119,10 @@ public class SRSocket {
                         packet.resetTime();
                     }
 
-                    if (!senderWindow.isFull()) {
-                        flag = Flag.SEND;
-                    } else {
-                        flag = Flag.RECEIVE;
-                    }
+                    flag = Flag.SEND;
                     break;
                 default:
+                    flag = Flag.FINISH;
                     break;
             }
         }
