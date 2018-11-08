@@ -13,11 +13,14 @@ class SRReceiverWindow {
         Arrays.fill(window, null);
     }
 
-    void add(SRPacket packet) {
+    boolean accept(SRPacket packet) {
         int pos = packet.getSeq() % WINDOW_SIZE;
         if (window[pos] == null) {
             window[pos] = packet;
             MIN_RECVED_SEQ = Integer.min(MIN_RECVED_SEQ, packet.getSeq());
+            return true;
+        } else {
+            return packet.getSeq() == window[pos].getSeq() || packet.getSeq() < EXPECTED_SEQ;
         }
     }
 

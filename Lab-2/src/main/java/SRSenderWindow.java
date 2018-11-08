@@ -56,6 +56,18 @@ class SRSenderWindow {
             }
         }
     }
+
+    boolean isFull() {
+        int queuingCount = NEXT_SEQ - SEND_BASE;
+        queuingCount = queuingCount >= 0 ? queuingCount : queuingCount + MAX_SEQ;
+        return queuingCount >= WINDOW_SIZE;
+    }
+
+    boolean isEmpty() {
+        int queuingCount = NEXT_SEQ - SEND_BASE;
+        queuingCount = queuingCount >= 0 ? queuingCount : queuingCount + MAX_SEQ;
+        return queuingCount == 0;
+    }
 }
 
 
