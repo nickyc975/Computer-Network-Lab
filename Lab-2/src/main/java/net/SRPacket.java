@@ -26,7 +26,7 @@ public class SRPacket {
     public SRPacket(byte[] packet) {
         seq = packet[0] & 0xFF;
         type = SRPacketType.fromValue(packet[1]);
-        length = ((packet[2] << 8) & 0xFF) + packet[3] & 0xFF;
+        length = ((packet[2] & 0xFF) << 8) + (packet[3] & 0xFF);
         data = Arrays.copyOfRange(packet, 4, length + 4);
     }
 
@@ -77,6 +77,6 @@ public class SRPacket {
 
     @Override
     public String toString() {
-        return "seq: " + seq + "\ntype: " + type.name() + "\ndata length: " + length + "\n";
+        return "seq: " + seq + "\ntype: " + type.name() + "\ndata length: " + data.length + "\n";
     }
 }
