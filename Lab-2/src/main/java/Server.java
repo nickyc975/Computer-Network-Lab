@@ -10,8 +10,8 @@ public class Server {
         int emptyCount = 0, MAX_EMPTY_COUNT = 50;
         FileInputStream imgReader = new FileInputStream(new File("Lab-2/src/main/java/input.jpg"));
         FileOutputStream txtWriter = new FileOutputStream(new File("Lab-2/src/main/java/output.txt"));
-        SRSocket socket = new SRSocket(8081, 0, 0, true);
-        socket.connect(InetAddress.getLocalHost(), 8080);
+        SRSocket socket = new SRSocket(8080, 0, 0, true);
+        socket.connect(InetAddress.getByName("192.168.43.75"), 8080);
 
         byte[] data = socket.read();
         while (emptyCount < MAX_EMPTY_COUNT) {

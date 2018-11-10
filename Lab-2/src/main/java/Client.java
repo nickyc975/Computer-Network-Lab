@@ -13,7 +13,7 @@ public class Client {
         FileInputStream txtReader = new FileInputStream(new File("Lab-2/src/main/java/input.txt"));
         FileOutputStream imgWriter = new FileOutputStream(new File("Lab-2/src/main/java/output.jpg"));
         SRSocket socket = new SRSocket(8080, 0, 0, true);
-        socket.connect(InetAddress.getLocalHost(), 8081);
+        socket.connect(InetAddress.getByName("192.168.43.162"), 8080);
 
         byte[] buffer = new byte[56789];
         int length = txtReader.read(buffer);
