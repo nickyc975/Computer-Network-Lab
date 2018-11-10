@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 class SRReceiverWindow {
     private static final int MAX_SEQ = 128;
-    private static final int WINDOW_SIZE = 63;
+    private static final int WINDOW_SIZE = 64;
 
     private SRPacket[] window;
     private int EXPECTED_SEQ = 0;

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 class SRSenderWindow {
     private static final int MAX_SEQ = 128;
-    private static final int WINDOW_SIZE = 63;
+    private static final int WINDOW_SIZE = 64;
 
     private int QUEUING = 0;
     private int NEXT_SEQ = 0;

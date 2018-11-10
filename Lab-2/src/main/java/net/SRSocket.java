@@ -99,17 +99,8 @@ public class SRSocket {
                     }
                     break;
                 case RECEIVE:
-                    try {
-                        while (true) {
-                            SRPacket recved = receive();
-                            if (recved.getType().equals(SRPacketType.ACK)) {
-                                log("receive ack: " + recved.getSeq() + "\n");
-                                senderWindow.remove(recved.getSeq());
-                            }
-                        }
-                    } catch (SocketTimeoutException e) {
-                        flag = Flag.TIMEOUT;
-                    }
+                    receive();
+                    flag = Flag.TIMEOUT;
                     break;
                 case TIMEOUT:
                     SRPacketWrapper[] timeout = senderWindow.getTimeoutPkts();
@@ -129,31 +120,12 @@ public class SRSocket {
     }
 
     public byte[] read() throws IOException {
-        try {
-            SRPacket packet = receive();
-            while (receiverWindow.shouldACK(packet)) {
-                if (shouldLossPkt()) {
-                    log("loss packet: " + packet.getSeq() + "\n");
-                } else {
-                    log("receive packet: " + packet.getSeq() + "\n");
-                    receiverWindow.add(packet);
-                    if (shouldLossACK()) {
-                        log("loss ack: " + packet.getSeq() + "\n");
-                    } else {
-                        log("send ack: " + packet.getSeq() + "\n");
-                        send(new SRPacket(packet.getSeq(), SRPacketType.ACK));
-                    }
-                }
-                packet = receive();
-            }
-        } catch (SocketTimeoutException e) {
-
-        }
-
+        receive();
         int offset = 0;
         byte[] data = new byte[0];
         SRPacket[] recved = receiverWindow.read();
         for(int i = 0; i < recved.length; i++) {
+            log("read packet: " + recved[i].getSeq() + "\n");
             byte[] packetData = recved[i].getData();
             while (data.length - offset < packetData.length) {
                 data = Arrays.copyOf(data, packetData.length + offset);
@@ -188,8 +160,47 @@ public class SRSocket {
         sendTo(packet, address, port);
     }
 
-    private SRPacket receive() throws IOException {
-        return receiveFrom(address, port);
+    private void receive() throws IOException {
+        try {
+            SRPacket packet = receiveFrom(address, port);
+            while (true) {
+                switch (packet.getType()) {
+                    case ACK:
+                        if (packet.getType().equals(SRPacketType.ACK)) {
+                            log("receive ack: " + packet.getSeq() + "\n");
+                            senderWindow.remove(packet.getSeq());
+                        }
+                        break;
+                    case DATA:
+                        if (receiverWindow.shouldACK(packet)) {
+                            if (shouldLossPkt()) {
+                                log("loss packet: " + packet.getSeq() + "\n");
+                            } else {
+                                log("receive packet: " + packet.getSeq() + "\n");
+                                receiverWindow.add(packet);
+                                if (shouldLossACK()) {
+                                    log("loss ack: " + packet.getSeq() + "\n");
+                                } else {
+                                    log("send ack: " + packet.getSeq() + "\n");
+                                    send(new SRPacket(packet.getSeq(), SRPacketType.ACK));
+                                }
+                            }
+                        } else {
+                            log("rejected packet: " + packet.getSeq() + "\n");
+                        }
+                        break;
+                    case HELLO:
+                        break;
+                    case END:
+                        break;
+                    default:
+                        break;
+                }
+                packet = receiveFrom(address, port);
+            }
+        } catch (SocketTimeoutException e) {
+
+        }
     }
 
     private void sendTo(SRPacket packet, InetAddress address, int port) throws IOException {
