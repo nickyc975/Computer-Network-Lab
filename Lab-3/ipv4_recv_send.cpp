@@ -34,9 +34,9 @@ int cal_check_sum(ipv4_header *header) {
     unsigned int check_sum = 0;
     unsigned short *header_chksum = (unsigned short *)header;
 
-    for (i = 0; i < (header->ver_head_len & 0xF) * 4; i++) {
+    for (i = 0; i < (header->ver_head_len & 0xF) * 2; i++) {
         if (i != 5) {
-            check_sum = check_sum + htons(header_chksum[i]);
+            check_sum = check_sum + ntohs(header_chksum[i]);
         }
     }
 
@@ -62,7 +62,7 @@ int stud_ip_recv(char *pBuffer, unsigned short length)
         ip_DiscardPkt(pBuffer, STUD_IP_TEST_HEADLEN_ERROR);
     } else if ((int)(header->ttl) == 0) {
         ip_DiscardPkt(pBuffer, STUD_IP_TEST_TTL_ERROR);
-    } else if (htonl(header->destination_addr) != ipv4_addr) {
+    } else if (ntohl(header->destination_addr) != ipv4_addr) {
         ip_DiscardPkt(pBuffer, STUD_IP_TEST_DESTINATION_ERROR);
     } else if (cal_check_sum(header) != header->header_chksum) {
         ip_DiscardPkt(pBuffer, STUD_IP_TEST_CHECKSUM_ERROR);
@@ -77,5 +77,22 @@ int stud_ip_recv(char *pBuffer, unsigned short length)
 int stud_ip_Upsend(char *pBuffer, unsigned short len, unsigned int srcAddr,
 				   unsigned int dstAddr, byte protocol, byte ttl)
 {
+    unsigned int header_len = sizeof(ipv4_header);
+    char *sendBuffer = (char *)malloc(len + header_len);
+    ipv4_header *header = (ipv4_header *)sendBuffer;
+
+    header->ver_head_len = (char)((4 << 4) + header_len / 4);
+    header->t_o_s = (char)0;
+    header->total_len = htons((unsigned short)(header_len + len));
+    header->identity = htons((unsigned short)0xF0F0);
+    header->fragment = (unsigned short)0;
+    header->ttl = (unsigned char)ttl;
+    header->protocol = (unsigned char)protocol;
+    header->source_addr = htonl(srcAddr);
+    header->destination_addr = htonl(dstAddr);
+    header->header_chksum = cal_check_sum(header);
+    memcpy(sendBuffer + header_len, pBuffer, len);
+    ip_SendtoLower(sendBuffer, len + header_len);
+
 	return 0;
 }
